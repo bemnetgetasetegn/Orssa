@@ -63,8 +63,20 @@ export default function EmployeeDetailClient({
   const isSuspended = employee.account_status === 'suspended'
 
   const handleCopyLink = () => {
-    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : baseUrl
-    const link = loginRef ? `${origin}/login?ref=${loginRef}` : `${origin}/login`
+    let empOrigin = baseUrl
+    if (typeof window !== 'undefined') {
+      const host = window.location.host
+      const proto = window.location.protocol
+      if (host.startsWith('admin.')) {
+        empOrigin = `${proto}//${host.replace(/^admin\./, 'employee.')}`
+      } else if (host.startsWith('admin.localhost')) {
+        empOrigin = `${proto}//${host.replace(/^admin\./, 'employee.')}`
+      } else if (host === 'localhost' || host.startsWith('localhost:')) {
+        const port = window.location.port ? `:${window.location.port}` : ''
+        empOrigin = `${proto}//employee.localhost${port}`
+      }
+    }
+    const link = loginRef ? `${empOrigin}/login?ref=${loginRef}` : `${empOrigin}/login`
     navigator.clipboard.writeText(link)
     setCopiedLink(true)
     setTimeout(() => setCopiedLink(false), 2000)

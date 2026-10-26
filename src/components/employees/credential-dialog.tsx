@@ -96,13 +96,18 @@ export function CredentialDialog({
       try {
         const url = new URL(credentials.login_url)
         // If it's a localhost/dev URL, align with the active browser port (e.g. 3000, 3001)
-        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-          return `${window.location.origin}${url.pathname}${url.search}`
+        if (url.hostname.includes('localhost') || url.hostname === '127.0.0.1') {
+          const port = window.location.port ? `:${window.location.port}` : ''
+          const proto = window.location.protocol
+          // Determine target subdomain: employee or admin
+          const isCandidate = credentials.employee_code && credentials.employee_code !== 'N/A'
+          const targetHost = isCandidate ? `employee.localhost${port}` : `admin.localhost${port}`
+          return `${proto}//${targetHost}${url.pathname}${url.search}`
         }
       } catch {}
     }
     return credentials?.login_url || ''
-  }, [credentials?.login_url])
+  }, [credentials?.login_url, credentials?.employee_code])
 
   const copyToClipboard = async (field: CopiedField, value: string) => {
     try {

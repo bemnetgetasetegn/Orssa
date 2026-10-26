@@ -1,11 +1,44 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { extractSubdomain, getSubdomainUrls } from '@/lib/utils/url'
+
+function redirectWithCookies(
+  destination: string | URL,
+  request: NextRequest,
+  responseWithCookies: NextResponse
+) {
+  const targetUrl = typeof destination === 'string' ? new URL(destination, request.url) : destination
+  const redirectRes = NextResponse.redirect(targetUrl)
+  responseWithCookies.cookies.getAll().forEach((c) => {
+    redirectRes.cookies.set(c.name, c.value, c)
+  })
+  return redirectRes
+}
+
+function rewriteWithCookies(
+  destination: string | URL,
+  request: NextRequest,
+  responseWithCookies: NextResponse,
+  customHeaders?: Headers
+) {
+  const targetUrl = typeof destination === 'string' ? new URL(destination, request.url) : destination
+  const rewriteRes = NextResponse.rewrite(targetUrl, {
+    request: {
+      headers: customHeaders || request.headers,
+    },
+  })
+  responseWithCookies.cookies.getAll().forEach((c) => {
+    rewriteRes.cookies.set(c.name, c.value, c)
+  })
+  return rewriteRes
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
+  // 1. Initialize Supabase Client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,89 +62,273 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired
+  // 2. Refresh session if expired
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // 3. Extract Host, Subdomain, and Subdomain URLs
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || ''
+  const hostname = host.split(':')[0].toLowerCase()
+  const subdomain = extractSubdomain(host)
+  const { mainUrl, adminUrl, employeeUrl, isLocal } = getSubdomainUrls(host)
   const pathname = request.nextUrl.pathname
+  const search = request.nextUrl.search
 
-  // Protected application routes (Admin & Employee portals)
-  const isAdminRoute = pathname.startsWith('/admin')
-  const isEmployeeRoute = pathname.startsWith('/employee')
-  const isProtectedRoute = isAdminRoute || isEmployeeRoute
+  // Check if accessing from standard localhost root without subdomain prefix
+  const isPlainLocalhost = isLocal && (hostname === 'localhost' || hostname === '127.0.0.1')
 
-  // Unauthenticated user trying to access protected routes
-  if (!user && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  // Authenticated user trying to access login page
-  if (user && pathname === '/login') {
-    // If accessing with an employee ref token, allow the login page to handle session switching / dedicated verification
-    if (!request.nextUrl.searchParams.has('ref')) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, account_status')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.account_status === 'suspended') {
-        await supabase.auth.signOut()
-        return NextResponse.redirect(new URL('/login?error=account_suspended', request.url))
-      }
-
-      if (profile?.role === 'super_admin' || profile?.role === 'sub_admin') {
-        return NextResponse.redirect(new URL('/admin', request.url))
-      } else if (profile?.role === 'employee') {
-        return NextResponse.redirect(new URL('/employee', request.url))
-      }
-    }
-  }
-
-  // Role-based access control for authenticated users
-  if (user && (isAdminRoute || isEmployeeRoute)) {
+  // Fetch user profile if user is logged in
+  let userProfile: { role: string; account_status: string } | null = null
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, account_status')
       .eq('id', user.id)
       .single()
 
-    // Check account status
-    if (profile?.account_status === 'suspended') {
+    userProfile = profile
+
+    // If account suspended, sign out immediately
+    if (userProfile?.account_status === 'suspended') {
       await supabase.auth.signOut()
-      return NextResponse.redirect(new URL('/login?error=account_suspended', request.url))
+      const loginTarget = subdomain === 'employee' ? `${employeeUrl}/login?error=account_suspended` : `${adminUrl}/login?error=account_suspended`
+      return redirectWithCookies(loginTarget, request, supabaseResponse)
+    }
+  }
+
+  // Marketing pages list
+  const isMarketingPage =
+    pathname === '/about' ||
+    pathname === '/contact' ||
+    pathname === '/faq' ||
+    pathname.startsWith('/destinations')
+
+  // Reserved non-ref paths
+  const reservedPaths = [
+    'login',
+    'admin',
+    'employee',
+    'auth',
+    'api',
+    '_next',
+    'about',
+    'contact',
+    'faq',
+    'destinations',
+    'favicon.ico',
+    'robots.txt',
+    'sitemap.xml',
+  ]
+
+  // =========================================================================
+  // SUBDOMAIN: ADMIN (admin.orssa.net / admin.localhost)
+  // =========================================================================
+  if (subdomain === 'admin') {
+    // A. Marketing pages requested on admin subdomain -> redirect to marketing site
+    if (isMarketingPage) {
+      return redirectWithCookies(`${mainUrl}${pathname}${search}`, request, supabaseResponse)
     }
 
-    if (!profile) {
-      await supabase.auth.signOut()
-      return NextResponse.redirect(new URL('/login', request.url))
+    // B. Employee portal requested on admin subdomain -> redirect to employee subdomain
+    if (pathname.startsWith('/employee')) {
+      return redirectWithCookies(`${employeeUrl}${pathname}${search}`, request, supabaseResponse)
     }
 
-    // Employee trying to access admin routes
-    if (isAdminRoute && profile.role === 'employee') {
-      return NextResponse.redirect(new URL('/employee', request.url))
+    // C. Root path '/' on admin subdomain
+    if (pathname === '/') {
+      if (!user) {
+        return redirectWithCookies(new URL('/login', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'employee') {
+        return redirectWithCookies(`${employeeUrl}/employee`, request, supabaseResponse)
+      }
+      if (userProfile?.role === 'sub_admin') {
+        return redirectWithCookies(new URL('/admin/employees', request.url), request, supabaseResponse)
+      }
+      return redirectWithCookies(new URL('/admin', request.url), request, supabaseResponse)
     }
 
-    // Admin/sub-admin trying to access employee routes
-    if (isEmployeeRoute && (profile.role === 'super_admin' || profile.role === 'sub_admin')) {
-      return NextResponse.redirect(new URL('/admin', request.url))
+    // D. Login page on admin subdomain
+    if (pathname === '/login') {
+      if (user && userProfile) {
+        if (userProfile.role === 'employee') {
+          // Candidates not permitted in admin portal
+          return redirectWithCookies(`${employeeUrl}/employee`, request, supabaseResponse)
+        }
+        if (userProfile.role === 'sub_admin') {
+          return redirectWithCookies(new URL('/admin/employees', request.url), request, supabaseResponse)
+        }
+        return redirectWithCookies(new URL('/admin', request.url), request, supabaseResponse)
+      }
+      // Pass x-subdomain header to render Admin Login UI
+      const reqHeaders = new Headers(request.headers)
+      reqHeaders.set('x-subdomain', 'admin')
+      return NextResponse.next({
+        request: {
+          headers: reqHeaders,
+        },
+      })
     }
 
-    // Sub-admin trying to access restricted admin routes
-    if (profile.role === 'sub_admin') {
-      const subAdminRestrictedRoutes = [
-        '/admin/sub-admins',
-        '/admin/letters/templates',
-        '/admin/audit-logs',
-        '/admin/settings',
-        '/admin/reports',
-      ]
-      const isRestricted = subAdminRestrictedRoutes.some((route) =>
-        pathname.startsWith(route)
-      )
-      if (isRestricted) {
-        return NextResponse.redirect(new URL('/admin/employees', request.url))
+    // E. Protected /admin routes
+    if (pathname.startsWith('/admin')) {
+      if (!user) {
+        return redirectWithCookies(new URL('/login', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'employee') {
+        // Strict boundary: candidate cannot view admin pages
+        return redirectWithCookies(`${employeeUrl}/employee`, request, supabaseResponse)
+      }
+      if (userProfile?.role === 'sub_admin') {
+        const subAdminRestrictedRoutes = [
+          '/admin/sub-admins',
+          '/admin/letters/templates',
+          '/admin/audit-logs',
+          '/admin/settings',
+          '/admin/reports',
+        ]
+        const isRestricted = subAdminRestrictedRoutes.some((route) =>
+          pathname.startsWith(route)
+        )
+        if (isRestricted) {
+          return redirectWithCookies(new URL('/admin/employees', request.url), request, supabaseResponse)
+        }
+      }
+    }
+
+    return supabaseResponse
+  }
+
+  // =========================================================================
+  // SUBDOMAIN: EMPLOYEE (employee.orssa.net / employee.localhost)
+  // =========================================================================
+  if (subdomain === 'employee') {
+    // A. Marketing pages requested on employee subdomain -> redirect to marketing site
+    if (isMarketingPage) {
+      return redirectWithCookies(`${mainUrl}${pathname}${search}`, request, supabaseResponse)
+    }
+
+    // B. Admin routes requested on employee subdomain -> redirect to admin subdomain
+    if (pathname.startsWith('/admin')) {
+      return redirectWithCookies(`${adminUrl}${pathname}${search}`, request, supabaseResponse)
+    }
+
+    // C. Root path '/' on employee subdomain
+    if (pathname === '/') {
+      if (!user) {
+        return redirectWithCookies(new URL('/login', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'super_admin' || userProfile?.role === 'sub_admin') {
+        return redirectWithCookies(`${adminUrl}/admin`, request, supabaseResponse)
+      }
+      return redirectWithCookies(new URL('/employee', request.url), request, supabaseResponse)
+    }
+
+    // D. Private candidate login link pattern: employee.orssa.net/<refToken>
+    // If path is a single path segment like "/c79b91a8...", rewrite to "/login?ref=c79b91a8..."
+    const segments = pathname.split('/').filter(Boolean)
+    if (segments.length === 1 && !reservedPaths.includes(segments[0])) {
+      const refToken = segments[0]
+      return rewriteWithCookies(new URL(`/login?ref=${encodeURIComponent(refToken)}`, request.url), request, supabaseResponse)
+    }
+
+    // E. Login page on employee subdomain
+    if (pathname === '/login') {
+      if (user && userProfile && !request.nextUrl.searchParams.has('ref')) {
+        if (userProfile.role === 'super_admin' || userProfile.role === 'sub_admin') {
+          return redirectWithCookies(`${adminUrl}/admin`, request, supabaseResponse)
+        }
+        return redirectWithCookies(new URL('/employee', request.url), request, supabaseResponse)
+      }
+      // Pass x-subdomain header to render Employee Login UI
+      const reqHeaders = new Headers(request.headers)
+      reqHeaders.set('x-subdomain', 'employee')
+      return NextResponse.next({
+        request: {
+          headers: reqHeaders,
+        },
+      })
+    }
+
+    // F. Protected /employee routes
+    if (pathname.startsWith('/employee')) {
+      if (!user) {
+        return redirectWithCookies(new URL('/login', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'super_admin' || userProfile?.role === 'sub_admin') {
+        // Staff accounts cannot access candidate portal
+        return redirectWithCookies(`${adminUrl}/admin`, request, supabaseResponse)
+      }
+    }
+
+    return supabaseResponse
+  }
+
+  // =========================================================================
+  // SUBDOMAIN: MAIN (orssa.net / www.orssa.net / plain localhost dev)
+  // =========================================================================
+  if (!isPlainLocalhost) {
+    // In production on orssa.net:
+    // If accessing admin routes on main domain, redirect to admin.orssa.net
+    if (pathname.startsWith('/admin')) {
+      return redirectWithCookies(`${adminUrl}${pathname}${search}`, request, supabaseResponse)
+    }
+    // If accessing employee routes on main domain, redirect to employee.orssa.net
+    if (pathname.startsWith('/employee')) {
+      return redirectWithCookies(`${employeeUrl}${pathname}${search}`, request, supabaseResponse)
+    }
+    // If accessing /login on main domain:
+    if (pathname === '/login') {
+      if (request.nextUrl.searchParams.has('ref')) {
+        return redirectWithCookies(`${employeeUrl}/login${search}`, request, supabaseResponse)
+      }
+      // Redirect unreferenced login to admin portal or show portal choice
+      return redirectWithCookies(`${adminUrl}/login`, request, supabaseResponse)
+    }
+  } else {
+    // Local development fallback on plain localhost:3000
+    // Allows full role-based flow without requiring local DNS changes if developer chooses
+    if (pathname.startsWith('/admin')) {
+      if (!user) {
+        return redirectWithCookies(new URL('/login', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'employee') {
+        return redirectWithCookies(new URL('/employee', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'sub_admin') {
+        const subAdminRestrictedRoutes = [
+          '/admin/sub-admins',
+          '/admin/letters/templates',
+          '/admin/audit-logs',
+          '/admin/settings',
+          '/admin/reports',
+        ]
+        const isRestricted = subAdminRestrictedRoutes.some((route) =>
+          pathname.startsWith(route)
+        )
+        if (isRestricted) {
+          return redirectWithCookies(new URL('/admin/employees', request.url), request, supabaseResponse)
+        }
+      }
+    }
+
+    if (pathname.startsWith('/employee')) {
+      if (!user) {
+        return redirectWithCookies(new URL('/login', request.url), request, supabaseResponse)
+      }
+      if (userProfile?.role === 'super_admin' || userProfile?.role === 'sub_admin') {
+        return redirectWithCookies(new URL('/admin', request.url), request, supabaseResponse)
+      }
+    }
+
+    if (pathname === '/login' && user && userProfile && !request.nextUrl.searchParams.has('ref')) {
+      if (userProfile.role === 'super_admin') {
+        return redirectWithCookies(new URL('/admin', request.url), request, supabaseResponse)
+      } else if (userProfile.role === 'sub_admin') {
+        return redirectWithCookies(new URL('/admin/employees', request.url), request, supabaseResponse)
+      } else if (userProfile.role === 'employee') {
+        return redirectWithCookies(new URL('/employee', request.url), request, supabaseResponse)
       }
     }
   }
@@ -122,11 +339,11 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
+     * Match all request paths except for:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public files with extensions
+     * - public files with extensions (.svg, .png, .jpg, etc.)
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

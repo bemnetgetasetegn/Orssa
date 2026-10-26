@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireSuperAdmin, logAuditEvent } from '@/lib/auth/helpers'
 import { generateSecurePassword, generateLoginRef, buildLoginUrl } from '@/lib/security/utils'
-import { getBaseUrl } from '@/lib/utils/url'
+import { getAdminBaseUrl } from '@/lib/utils/url'
 import { subAdminSchema, type SubAdminInput } from '@/lib/validation/schemas'
 import type { ApiResponse, CredentialResponse, Profile, AccountStatus } from '@/types/database'
 
@@ -79,7 +79,7 @@ export async function createSubAdmin(
 
     revalidatePath('/admin/sub-admins')
 
-    const baseUrl = await getBaseUrl()
+    const baseUrl = await getAdminBaseUrl()
     const loginUrl = `${baseUrl}/login`
 
     return {

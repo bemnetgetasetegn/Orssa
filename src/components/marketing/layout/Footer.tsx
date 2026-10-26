@@ -1,12 +1,25 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
 import { SITE_CONFIG } from '@/config/site';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const [adminUrl, setAdminUrl] = useState('https://admin.orssa.net');
+  const [employeeUrl, setEmployeeUrl] = useState('https://employee.orssa.net');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.host;
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        const port = window.location.port ? `:${window.location.port}` : ':3000';
+        setAdminUrl(`http://admin.localhost${port}`);
+        setEmployeeUrl(`http://employee.localhost${port}`);
+      }
+    }
+  }, []);
 
   return (
     <footer className="bg-[#171717] text-white pt-16 pb-12 border-t border-white/10">
@@ -76,14 +89,21 @@ export const Footer: React.FC = () => {
                   Book a Consultation
                 </Link>
               </li>
-              <li className="pt-2 border-t border-white/10">
-                <Link
-                  href="/login"
-                  className="text-[#E50914] hover:text-white transition-colors font-medium flex items-center gap-1"
+              <li className="pt-2 border-t border-white/10 space-y-1.5">
+                <a
+                  href={employeeUrl}
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium flex items-center justify-between text-xs"
                 >
-                  <span>Candidate & Staff Portal</span>
+                  <span>Candidate Portal</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
-                </Link>
+                </a>
+                <a
+                  href={adminUrl}
+                  className="text-[#E50914] hover:text-red-400 transition-colors font-medium flex items-center justify-between text-xs"
+                >
+                  <span>Administration Portal</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
               </li>
             </ul>
           </div>

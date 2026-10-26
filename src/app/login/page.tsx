@@ -71,7 +71,20 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
-  // Read query params
+  const [subdomain, setSubdomain] = useState<'admin' | 'employee' | 'main'>('main')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.host.toLowerCase()
+      if (host.startsWith('admin.') || host === 'admin.localhost' || host.startsWith('admin-')) {
+        setSubdomain('admin')
+      } else if (host.startsWith('employee.') || host === 'employee.localhost' || host.startsWith('employee-')) {
+        setSubdomain('employee')
+      } else {
+        setSubdomain('main')
+      }
+    }
+  }, [])
   const errorParam = searchParams.get('error')
   const refParam = searchParams.get('ref')
 
@@ -202,6 +215,19 @@ function LoginForm() {
         return
       }
 
+      // Security role validation against current subdomain
+      if (subdomain === 'admin' && profile?.role === 'employee') {
+        await supabase.auth.signOut()
+        setServerError('Access restricted: Candidate accounts must sign in via employee.orssa.net.')
+        return
+      }
+
+      if (subdomain === 'employee' && (profile?.role === 'super_admin' || profile?.role === 'sub_admin')) {
+        await supabase.auth.signOut()
+        setServerError('Access restricted: Administrative and staff accounts must sign in via admin.orssa.net.')
+        return
+      }
+
       if (profile?.role === 'employee') {
         window.location.href = '/employee'
       } else if (profile?.role === 'sub_admin') {
@@ -230,8 +256,23 @@ function LoginForm() {
             ORSA
           </span>
           <p className="mt-1 text-sm tracking-wider uppercase" style={{ color: '#A1A1AA' }}>
-            Recruitment Management
+            {subdomain === 'admin'
+              ? 'Administration Portal'
+              : subdomain === 'employee'
+              ? 'Candidate Portal'
+              : 'Recruitment Management'}
           </p>
+          <div className="mt-2">
+            {subdomain === 'admin' ? (
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-[#E50914]/15 text-[#E50914] border border-[#E50914]/30">
+                Super Admin & Sub-Admin Login
+              </span>
+            ) : subdomain === 'employee' ? (
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                Verified Candidate Access
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {refLoading ? (
@@ -338,7 +379,11 @@ function LoginForm() {
                     className="block text-sm font-medium"
                     style={{ color: '#FAFAFA' }}
                   >
-                    Email address
+                    {subdomain === 'admin'
+                      ? 'Staff Email Address'
+                      : subdomain === 'employee'
+                      ? 'Candidate Email Address'
+                      : 'Email address'}
                   </label>
                   {refEmployee && (
                     <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: '#E50914' }}>

@@ -3,7 +3,7 @@ import { requireAdmin, canManageEmployee } from '@/lib/auth/helpers'
 import { getEmployee, getEmployeePhotoUrl } from '@/app/actions/employees'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { AdminLayout } from '@/components/layout/admin-layout'
-import { getBaseUrl } from '@/lib/utils/url'
+import { getEmployeeBaseUrl } from '@/lib/utils/url'
 import EmployeeDetailClient from './EmployeeDetailClient'
 import type { AuditLog } from '@/types/database'
 
@@ -46,7 +46,7 @@ export default async function EmployeeDetailPage({ params }: EmployeePageProps) 
     .order('created_at', { ascending: false })
     .limit(20)
 
-  const baseUrl = await getBaseUrl()
+  const baseUrl = await getEmployeeBaseUrl()
 
   // Fetch active login ref for direct portal access link
   const adminClient = createAdminClient()

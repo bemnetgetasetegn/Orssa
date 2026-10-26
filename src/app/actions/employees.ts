@@ -15,7 +15,7 @@ import {
   buildLoginUrl,
   generateLoginRef,
 } from '@/lib/security/utils'
-import { getBaseUrl } from '@/lib/utils/url'
+import { getEmployeeBaseUrl } from '@/lib/utils/url'
 import {
   employeeRegistrationSchema,
   employeeEditSchema,
@@ -201,7 +201,7 @@ export async function registerEmployee(
 
     revalidatePath('/admin/employees')
 
-    const baseUrl = await getBaseUrl()
+    const baseUrl = await getEmployeeBaseUrl()
     const loginUrl = buildLoginUrl(baseUrl, loginRef)
 
     return {

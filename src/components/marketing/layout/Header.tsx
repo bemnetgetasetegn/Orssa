@@ -12,8 +12,24 @@ export const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isDestDropdownOpen, setIsDestDropdownOpen] = useState(false);
+  const [isPortalDropdownOpen, setIsPortalDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const portalDropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+
+  const [adminUrl, setAdminUrl] = useState('https://admin.orssa.net');
+  const [employeeUrl, setEmployeeUrl] = useState('https://employee.orssa.net');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.host;
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        const port = window.location.port ? `:${window.location.port}` : ':3000';
+        setAdminUrl(`http://admin.localhost${port}`);
+        setEmployeeUrl(`http://employee.localhost${port}`);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,11 +40,14 @@ export const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDestDropdownOpen(false);
+      }
+      if (portalDropdownRef.current && !portalDropdownRef.current.contains(event.target as Node)) {
+        setIsPortalDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -38,6 +57,7 @@ export const Header: React.FC = () => {
   // Close dropdown on route change
   useEffect(() => {
     setIsDestDropdownOpen(false);
+    setIsPortalDropdownOpen(false);
   }, [pathname]);
 
   const isDestinationsActive = pathname?.startsWith('/destinations');
@@ -188,13 +208,63 @@ export const Header: React.FC = () => {
 
           {/* Right Action & Mobile Toggle */}
           <div className="flex items-center space-x-3 sm:space-x-4">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 border border-[#850D0D] text-[#850D0D] hover:bg-[#850D0D] hover:text-white uppercase tracking-wider text-xs font-semibold transition-colors duration-200"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Portal Sign In</span>
-            </Link>
+            <div className="relative" ref={portalDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsPortalDropdownOpen(!isPortalDropdownOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 border border-[#850D0D] text-[#850D0D] hover:bg-[#850D0D] hover:text-white uppercase tracking-wider text-xs font-semibold transition-colors duration-200"
+                aria-expanded={isPortalDropdownOpen}
+                aria-haspopup="menu"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Portal Sign In</span>
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isPortalDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isPortalDropdownOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-64 bg-white border border-[#DAD8D3] shadow-xl py-2 z-50 animate-in fade-in duration-150"
+                  role="menu"
+                >
+                  <div className="px-4 py-2 border-b border-[#DAD8D3]/50 text-[11px] font-semibold uppercase tracking-wider text-[#777570]">
+                    Select Your Portal
+                  </div>
+                  <a
+                    href={employeeUrl}
+                    role="menuitem"
+                    className="block px-4 py-2.5 text-sm text-[#171717] hover:bg-[#F5F4F1] hover:text-[#850D0D] transition-colors"
+                    onClick={() => setIsPortalDropdownOpen(false)}
+                  >
+                    <div className="font-semibold flex items-center justify-between">
+                      <span>Candidate Portal</span>
+                      <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                        Candidates
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#777570] truncate mt-0.5">
+                      Recruitment status & private login
+                    </p>
+                  </a>
+                  <div className="border-t border-[#DAD8D3]/50 my-1" />
+                  <a
+                    href={adminUrl}
+                    role="menuitem"
+                    className="block px-4 py-2.5 text-sm text-[#171717] hover:bg-[#F5F4F1] hover:text-[#850D0D] transition-colors"
+                    onClick={() => setIsPortalDropdownOpen(false)}
+                  >
+                    <div className="font-semibold flex items-center justify-between">
+                      <span>Staff & Admin Portal</span>
+                      <span className="text-[10px] text-[#850D0D] font-medium bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                        Admin
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#777570] truncate mt-0.5">
+                      Super Admin & Sub-Admin access
+                    </p>
+                  </a>
+                </div>
+              )}
+            </div>
 
             <div className="hidden sm:block">
               <Button variant="primary" size="sm" href="/contact">

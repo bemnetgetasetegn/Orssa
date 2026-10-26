@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, ArrowRight, LogIn } from 'lucide-react';
@@ -16,6 +16,20 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const navRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const [adminUrl, setAdminUrl] = useState('https://admin.orssa.net');
+  const [employeeUrl, setEmployeeUrl] = useState('https://employee.orssa.net');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.host;
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        const port = window.location.port ? `:${window.location.port}` : ':3000';
+        setAdminUrl(`http://admin.localhost${port}`);
+        setEmployeeUrl(`http://employee.localhost${port}`);
+      }
+    }
+  }, []);
 
   // Close when path changes
   useEffect(() => {
@@ -141,16 +155,37 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
               </Link>
             </li>
 
-            {/* Link to Recruitment Management Portal */}
-            <li className="pt-2 border-t border-white/10">
-              <Link
-                href="/login"
+            {/* Links to Dedicated Subdomain Portals */}
+            <li className="pt-2 border-t border-white/10 space-y-3">
+              <span className="block text-xs uppercase tracking-widest text-[#777570]">
+                Portals & Access
+              </span>
+              <a
+                href={employeeUrl}
                 onClick={onClose}
-                className="flex items-center gap-2 font-heading font-bold text-xl text-[#E50914] hover:text-white transition-colors"
+                className="flex items-center justify-between py-2 text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
               >
-                <LogIn className="w-5 h-5" />
-                <span>Portal Sign In</span>
-              </Link>
+                <div className="flex items-center gap-2">
+                  <LogIn className="w-4 h-4" />
+                  <span>Candidate Portal</span>
+                </div>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">
+                  Applicants
+                </span>
+              </a>
+              <a
+                href={adminUrl}
+                onClick={onClose}
+                className="flex items-center justify-between py-2 text-[#E50914] hover:text-red-400 font-semibold transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <LogIn className="w-4 h-4" />
+                  <span>Staff / Admin Portal</span>
+                </div>
+                <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/40">
+                  Staff Only
+                </span>
+              </a>
             </li>
           </ul>
         </nav>

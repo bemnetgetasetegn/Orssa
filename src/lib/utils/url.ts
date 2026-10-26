@@ -1,21 +1,138 @@
 import { headers } from 'next/headers'
 
+export type SubdomainType = 'main' | 'admin' | 'employee'
+
 /**
- * Dynamically resolves the base URL of the running application.
- * - In local development: dynamically detects whatever port is being used (3000, 3001, etc.)
- * - In production: uses request host or VERCEL_URL / NEXT_PUBLIC_APP_URL
+ * Extracts the active subdomain ('main' | 'admin' | 'employee') from a host header.
  */
-export async function getBaseUrl(): Promise<string> {
-  // 1. If explicit production domain is configured in env (e.g. https://www.orsa.com), prioritize it
+export function extractSubdomain(hostHeader: string | null | undefined): SubdomainType {
+  if (!hostHeader) return 'main'
+  const hostname = hostHeader.split(':')[0].toLowerCase()
+
   if (
-    process.env.NEXT_PUBLIC_APP_URL &&
-    !process.env.NEXT_PUBLIC_APP_URL.includes('localhost') &&
-    !process.env.NEXT_PUBLIC_APP_URL.includes('127.0.0.1')
+    hostname.startsWith('admin.') ||
+    hostname === 'admin.localhost' ||
+    hostname.startsWith('admin-')
   ) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
+    return 'admin'
   }
 
-  // 2. Dynamically extract from incoming request headers (works on localhost:3000, 3001, preview branches, etc.)
+  if (
+    hostname.startsWith('employee.') ||
+    hostname === 'employee.localhost' ||
+    hostname.startsWith('employee-')
+  ) {
+    return 'employee'
+  }
+
+  return 'main'
+}
+
+/**
+ * Resolves the root domain (e.g. 'orssa.net' or 'localhost:3000').
+ */
+export function getRootDomain(hostHeader?: string | null): {
+  domain: string
+  isLocal: boolean
+  port: string
+} {
+  const rootDomainEnv = process.env.NEXT_PUBLIC_ROOT_DOMAIN?.trim()
+  const host = hostHeader?.trim() || ''
+
+  // If host includes localhost or 127.0.0.1
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    const portMatch = host.match(/:(\d+)/)
+    const port = portMatch ? portMatch[1] : '3000'
+    return { domain: 'localhost', isLocal: true, port }
+  }
+
+  // If configured with custom production domain
+  if (rootDomainEnv && !rootDomainEnv.includes('localhost')) {
+    return { domain: rootDomainEnv, isLocal: false, port: '' }
+  }
+
+  // If host matches orssa.net
+  if (host.includes('orssa.net')) {
+    return { domain: 'orssa.net', isLocal: false, port: '' }
+  }
+
+  // Fallback to localhost if no production indicator
+  return { domain: 'localhost', isLocal: true, port: '3000' }
+}
+
+export interface SubdomainUrls {
+  mainUrl: string
+  adminUrl: string
+  employeeUrl: string
+  isLocal: boolean
+}
+
+/**
+ * Generates absolute URLs for all 3 portals based on environment.
+ */
+export function getSubdomainUrls(hostHeader?: string | null): SubdomainUrls {
+  const { domain, isLocal, port } = getRootDomain(hostHeader)
+
+  if (isLocal) {
+    const portSuffix = port ? `:${port}` : ':3000'
+    return {
+      mainUrl: `http://localhost${portSuffix}`,
+      adminUrl: `http://admin.localhost${portSuffix}`,
+      employeeUrl: `http://employee.localhost${portSuffix}`,
+      isLocal: true,
+    }
+  }
+
+  // Production or custom domain (e.g. orssa.net)
+  return {
+    mainUrl: `https://${domain}`,
+    adminUrl: `https://admin.${domain}`,
+    employeeUrl: `https://employee.${domain}`,
+    isLocal: false,
+  }
+}
+
+/**
+ * Asynchronously extracts host from current request headers and returns subdomain URLs.
+ */
+export async function getRequestSubdomainUrls(): Promise<SubdomainUrls> {
+  try {
+    const headerList = await headers()
+    const host = headerList.get('x-forwarded-host') || headerList.get('host')
+    return getSubdomainUrls(host)
+  } catch {
+    return getSubdomainUrls(process.env.NEXT_PUBLIC_APP_URL || null)
+  }
+}
+
+/**
+ * Get the dedicated employee base URL.
+ */
+export async function getEmployeeBaseUrl(): Promise<string> {
+  const urls = await getRequestSubdomainUrls()
+  return urls.employeeUrl
+}
+
+/**
+ * Get the dedicated admin base URL.
+ */
+export async function getAdminBaseUrl(): Promise<string> {
+  const urls = await getRequestSubdomainUrls()
+  return urls.adminUrl
+}
+
+/**
+ * Get the main marketing base URL.
+ */
+export async function getMainBaseUrl(): Promise<string> {
+  const urls = await getRequestSubdomainUrls()
+  return urls.mainUrl
+}
+
+/**
+ * Dynamically resolves the base URL of the running application for backward compatibility.
+ */
+export async function getBaseUrl(): Promise<string> {
   try {
     const headerList = await headers()
     const host = headerList.get('x-forwarded-host') || headerList.get('host')
@@ -26,18 +143,8 @@ export async function getBaseUrl(): Promise<string> {
     if (host) {
       return `${proto}://${host}`
     }
-  } catch {
-    // Fallback if executed outside of an incoming request context
-  }
+  } catch {}
 
-  // 3. Vercel deployment automatic domain variables
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`
-  }
-
-  // 4. Default fallback
-  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const urls = await getRequestSubdomainUrls()
+  return urls.mainUrl
 }
