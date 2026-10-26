@@ -37,10 +37,14 @@ export async function requireSuperAdmin(): Promise<Profile> {
   const profile = await getCurrentProfile()
   
   if (!profile || profile.role !== 'super_admin') {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     redirect('/login?error=unauthorized')
   }
   
-  if (profile.account_status === 'suspended') {
+  if (profile.account_status === 'suspended' || profile.account_status === 'inactive') {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     redirect('/login?error=account_suspended')
   }
   
@@ -52,10 +56,14 @@ export async function requireAdmin(): Promise<Profile> {
   const profile = await getCurrentProfile()
   
   if (!profile || !['super_admin', 'sub_admin'].includes(profile.role)) {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     redirect('/login?error=unauthorized')
   }
   
-  if (profile.account_status === 'suspended') {
+  if (profile.account_status === 'suspended' || profile.account_status === 'inactive') {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     redirect('/login?error=account_suspended')
   }
   
@@ -67,10 +75,14 @@ export async function requireEmployee(): Promise<Profile> {
   const profile = await getCurrentProfile()
   
   if (!profile || profile.role !== 'employee') {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     redirect('/login?error=unauthorized')
   }
   
-  if (profile.account_status === 'suspended') {
+  if (profile.account_status === 'suspended' || profile.account_status === 'inactive') {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     redirect('/login?error=account_suspended')
   }
   

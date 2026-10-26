@@ -48,15 +48,22 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          const isProd = process.env.NODE_ENV === 'production'
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
           supabaseResponse = NextResponse.next({
             request,
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const secureOpts = {
+              ...options,
+              secure: isProd ? true : options?.secure,
+              sameSite: (options?.sameSite || 'lax') as 'lax' | 'strict' | 'none',
+              path: '/',
+            }
+            supabaseResponse.cookies.set(name, value, secureOpts)
+          })
         },
       },
     }
@@ -89,10 +96,11 @@ export async function middleware(request: NextRequest) {
 
     userProfile = profile
 
-    // If account suspended, sign out immediately
-    if (userProfile?.account_status === 'suspended') {
+    // If profile missing, suspended, or inactive, kill session immediately
+    if (!userProfile || userProfile.account_status === 'suspended' || userProfile.account_status === 'inactive') {
       await supabase.auth.signOut()
-      const loginTarget = subdomain === 'employee' ? `${employeeUrl}/login?error=account_suspended` : `${adminUrl}/login?error=account_suspended`
+      const err = !userProfile ? 'unauthorized' : 'account_suspended'
+      const loginTarget = subdomain === 'employee' ? `${employeeUrl}/login?error=${err}` : `${adminUrl}/login?error=${err}`
       return redirectWithCookies(loginTarget, request, supabaseResponse)
     }
   }

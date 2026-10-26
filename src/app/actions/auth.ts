@@ -208,12 +208,19 @@ export async function validateEmployeeLoginRef(refToken: string): Promise<
 
     const { data: employee, error: empError } = await adminClient
       .from('employees')
-      .select('id, user_id, full_name, email, employee_code')
+      .select('id, user_id, full_name, email, employee_code, account_status')
       .eq('id', refRecord.employee_id)
       .single()
 
     if (empError || !employee) {
       return { success: false, error: 'Associated candidate record was not found.' }
+    }
+
+    if (employee.account_status === 'suspended') {
+      return {
+        success: false,
+        error: 'This candidate account has been suspended. Please contact an administrator.',
+      }
     }
 
     return {
