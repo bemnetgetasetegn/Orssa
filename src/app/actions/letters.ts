@@ -494,14 +494,19 @@ export async function generateLetterPdf(
     const { LetterPdfDocument } = await import('@/components/letters/LetterPdfDocument')
 
     const content = letter.rendered_content as LetterContentJson
-    const jobOffer = letter.job_offer as { title: string } | null
+    const resolvedJobTitle =
+      (Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : (letter.job_offer as any)?.title) ||
+      (letter.rendered_content as any)?.job_title ||
+      (letter.rendered_content as any)?.position ||
+      'Construction Worker'
 
     const pdfBuffer = await renderToBuffer(
       React.createElement(LetterPdfDocument, {
         content,
         employeeName:
           (letter.employee as { full_name?: string } | null)?.full_name ?? 'Employee',
-        jobTitle: jobOffer?.title ?? '',
+        jobTitle: resolvedJobTitle,
+        passportNumber: (letter.employee as any)?.passport_number,
         issueDate: letter.issued_at ?? new Date().toISOString(),
       }) as any
     )

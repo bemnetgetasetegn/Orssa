@@ -39,13 +39,13 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 8,
-    backgroundColor: '#1E88B5',
+    backgroundColor: '#E50914',
   },
   watermark: {
     position: 'absolute',
     top: 240,
-    left: 100,
-    width: 400,
+    left: 110,
+    width: 380,
     height: 320,
     opacity: 0.05,
   },
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 2,
-    borderBottomColor: '#1E88B5',
+    borderBottomColor: '#E50914',
     paddingBottom: 10,
     marginBottom: 12,
   },
@@ -62,14 +62,14 @@ const styles = StyleSheet.create({
     width: '45%',
   },
   logo: {
-    width: 170,
-    height: 38,
+    width: 150,
+    height: 42,
     objectFit: 'contain',
   },
   companyTagline: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#1E88B5',
+    color: '#E50914',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 4,
@@ -84,12 +84,12 @@ const styles = StyleSheet.create({
   companyNameRight: {
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
-    color: '#0F3A5D',
+    color: '#991B1B',
     marginBottom: 1,
   },
   websiteLink: {
     fontSize: 7.5,
-    color: '#1E88B5',
+    color: '#E50914',
     fontFamily: 'Helvetica-Bold',
     marginTop: 1,
   },
@@ -100,16 +100,16 @@ const styles = StyleSheet.create({
   },
   recipientBox: {
     width: '52%',
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#FECACA',
     borderRadius: 3,
     padding: 8,
   },
   recipientHeader: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#0369A1',
+    color: '#DC2626',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 2,
@@ -145,8 +145,8 @@ const styles = StyleSheet.create({
   officialBadge: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#047857',
-    backgroundColor: '#ECFDF5',
+    color: '#DC2626',
+    backgroundColor: '#FEF2F2',
     paddingVertical: 2,
     paddingHorizontal: 5,
     borderRadius: 2,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   subjectBanner: {
-    backgroundColor: '#0F3A5D',
+    backgroundColor: '#991B1B',
     paddingVertical: 5,
     paddingHorizontal: 8,
     borderRadius: 3,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
-    color: '#0F3A5D',
+    color: '#991B1B',
     marginTop: 4,
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -192,24 +192,24 @@ const styles = StyleSheet.create({
   table: {
     marginVertical: 8,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#FECACA',
     borderRadius: 3,
   },
   tableHeader: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#FEF2F2',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#BAE6FD',
+    borderBottomColor: '#FECACA',
     fontSize: 8,
     fontFamily: 'Helvetica-Bold',
-    color: '#0369A1',
+    color: '#991B1B',
     textTransform: 'uppercase',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0F2FE',
+    borderBottomColor: '#FEE2E2',
     paddingVertical: 3.5,
     paddingHorizontal: 8,
   },
@@ -255,9 +255,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   acceptanceBox: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#FECACA',
     borderRadius: 3,
     padding: 6,
     marginVertical: 6,
@@ -265,13 +265,13 @@ const styles = StyleSheet.create({
   acceptanceTitle: {
     fontSize: 8,
     fontFamily: 'Helvetica-Bold',
-    color: '#0369A1',
+    color: '#991B1B',
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   acceptanceText: {
     fontSize: 7.5,
-    color: '#334155',
+    color: '#1E293B',
     lineHeight: 1.35,
     textAlign: 'justify',
   },
@@ -288,13 +288,13 @@ const styles = StyleSheet.create({
     width: '50%',
   },
   signatureImg: {
-    width: 95,
-    height: 32,
+    width: 105,
+    height: 38,
     objectFit: 'contain',
     marginBottom: 2,
   },
   sigLine: {
-    width: 150,
+    width: 160,
     borderTopWidth: 1.5,
     borderTopColor: '#94A3B8',
     marginBottom: 3,
@@ -311,15 +311,15 @@ const styles = StyleSheet.create({
   signatoryCompany: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#1E88B5',
+    color: '#E50914',
   },
   stampCol: {
     width: '40%',
     alignItems: 'center',
   },
   stampImg: {
-    width: 75,
-    height: 75,
+    width: 78,
+    height: 78,
     objectFit: 'contain',
   },
   stampLabel: {
@@ -371,21 +371,48 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
         year: 'numeric',
       })
 
+  // Dynamic job role resolution: prevent fallback "Worker" from masking real role
+  const resolvedJobTitle =
+    jobTitle && jobTitle.trim().toLowerCase() !== 'worker'
+      ? jobTitle.trim()
+      : (content as any)?.job_title || (content as any)?.position || 'Construction Worker'
+
+  // Dynamic location resolution: replace {{work_location}} placeholder or empty value
+  const resolvedWorkLocation =
+    content.work_location &&
+    content.work_location.trim() !== '{{work_location}}' &&
+    content.work_location.trim().toLowerCase() !== 'to be determined'
+      ? content.work_location.trim()
+      : 'European Project Sites (Romania / Finland)'
+
   const logoPath = getAssetPath('logo.png')
   const watermarkPath = getAssetPath('watermark.png')
   const stampPath = getAssetPath('stamp.png')
   const signaturePath = getAssetPath('signature.png')
 
-  const companyName = content.company_name || 'Gilbertin Kansainvälinen Työagentti'
-  const companyAddress = content.company_address || 'Hämeenkatu 10, 33100 Tampere, Finland'
-  const companyEmail = content.company_email || 'info@kansainvalinentyo.com'
-  const companyPhone = content.company_phone || '+358 9 876 5432'
-  const website = 'www.kansainvalinentyo.com'
+  const companyName = 'Orsa Recruitment Agency'
+  const companyAddress = content.company_address || '123 Business District, International Plaza'
+  const companyEmail = 'contact@orssa.net'
+  const companyPhone = content.company_phone || '+1 (555) 019-2834'
+  const website = 'www.orssa.net'
+
+  const sanitizeText = (text: string | undefined): string => {
+    if (!text) return ''
+    return text
+      .replace(/\{\{work_location\}\}/g, resolvedWorkLocation)
+      .replace(/\{\{job_title\}\}/g, resolvedJobTitle)
+      .replace(/\{\{employee_name\}\}/g, employeeName)
+      .replace(/\bthe role of Worker\b/gi, `the role of ${resolvedJobTitle}`)
+      .replace(/\bposition of Worker\b/gi, `position of ${resolvedJobTitle}`)
+  }
+
+  const rawOfferBody = content.offer_body || ''
+  const sanitizedOfferBody = sanitizeText(rawOfferBody)
 
   return (
     <Document title={`Employment Offer - ${employeeName}`} author={companyName}>
       <Page size="A4" style={styles.page}>
-        {/* Left Vertical Ribbon */}
+        {/* Left Vertical Ribbon - RED */}
         <View style={styles.leftRibbon} />
 
         {/* Watermark */}
@@ -399,12 +426,12 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
             {logoPath ? (
               <Image src={logoPath} style={styles.logo} />
             ) : (
-              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#1E88B5' }}>
+              <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#E50914' }}>
                 {companyName}
               </Text>
             )}
             <Text style={styles.companyTagline}>
-              Your International Employment Partner
+              Your Future. Our Priority.
             </Text>
           </View>
           <View style={styles.headerDetails}>
@@ -428,7 +455,7 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
               </Text>
             )}
             <Text style={styles.recipientDetail}>
-              Proposed Role: {jobTitle}
+              Proposed Role: {resolvedJobTitle}
             </Text>
           </View>
 
@@ -439,7 +466,7 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
                 <Text style={styles.metaLabel}>Date: </Text>{formattedDate}
               </Text>
               <Text style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Ref: </Text>REF-{employeeName.slice(0, 3).toUpperCase()}-2026-FI
+                <Text style={styles.metaLabel}>Ref: </Text>REF-{employeeName.slice(0, 3).toUpperCase()}-2026-ORSA
               </Text>
             </View>
             <Text style={styles.officialBadge}>Official Employment Offer</Text>
@@ -449,7 +476,7 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
         {/* Subject Header */}
         <View style={styles.subjectBanner}>
           <Text style={styles.subjectText}>
-            Subject: Formal Offer of Employment — {jobTitle}
+            Subject: Formal Offer of Employment — {resolvedJobTitle}
           </Text>
         </View>
 
@@ -460,38 +487,40 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
 
         {/* Introduction */}
         <Text style={styles.paragraph}>
-          {content.introduction ||
-            `On behalf of ${companyName}, it is with immense pleasure and excitement that we extend this official offer of employment for the position of ${jobTitle}. We have been thoroughly impressed with your qualifications and believe your skills and dedication will be a significant asset to our projects in Finland. This opportunity represents a gateway to a rewarding career, offering a stable environment and substantial growth prospects in one of Europe's most dynamic and innovative construction landscapes.`}
+          {sanitizeText(content.introduction) ||
+            `On behalf of ${companyName}, it is with immense pleasure and excitement that we extend this official offer of employment for the position of ${resolvedJobTitle}. We have been thoroughly impressed with your qualifications and believe your skills and dedication will be a significant asset to our international projects. This opportunity represents a gateway to a rewarding career, offering a stable environment and substantial growth prospects.`}
         </Text>
 
         {/* Offer Body */}
         <Text style={styles.paragraph}>
-          {content.offer_body ||
-            'Finland is renowned for its high standards of living, robust economy, and commitment to worker welfare. Joining our team means becoming part of a community dedicated to excellence, safety, and mutual respect. We are confident that you will find this new chapter both professionally fulfilling and personally enriching.'}
+          {sanitizedOfferBody ||
+            `We are offering you the position of ${resolvedJobTitle} based at ${resolvedWorkLocation}. This opportunity has been secured through our international recruitment network and represents an excellent career development prospect. Joining our team means becoming part of a community dedicated to excellence, safety, and mutual respect.`}
         </Text>
 
         {/* Responsibilities / Position Details */}
-        <Text style={styles.sectionTitle}>Position Details & Location</Text>
+        <Text style={styles.sectionTitle}>Position Details &amp; Designated Worksite</Text>
         <Text style={styles.paragraph}>
-          {content.responsibilities ||
-            `You are being offered the role of ${jobTitle}, where you will be instrumental in building the future of ongoing projects in Finland. Responsibilities encompass site preparation, trade duties, adherence to Finnish occupational safety regulations, and maintaining high craftsmanship standards.`}
+          {sanitizeText(content.responsibilities) ||
+            `You are being offered the role of ${resolvedJobTitle}, where you will be instrumental in ongoing operations. Your primary worksite will be located at ${resolvedWorkLocation}, specifically tailored to projects that require skilled and dedicated individuals. Your duties encompass site preparation, execution of designated trade tasks, and rigorous adherence to occupational safety standards.`}
         </Text>
 
-        {/* Summary Table */}
+        {/* Summary Table - RED THEME */}
         <View style={styles.table}>
-          <Text style={styles.tableHeader}>Contract & Employment Specifications</Text>
+          <Text style={styles.tableHeader}>Contract &amp; Employment Specifications</Text>
           <View style={styles.tableRow}>
-            <Text style={styles.tableColLabel}>Position Offered:</Text>
-            <Text style={styles.tableColValue}>{jobTitle}</Text>
+            <Text style={styles.tableColLabel}>Designated Position:</Text>
+            <Text style={[styles.tableColValue, { fontFamily: 'Helvetica-Bold', color: '#DC2626' }]}>
+              {resolvedJobTitle}
+            </Text>
           </View>
           <View style={styles.tableRow}>
             <Text style={styles.tableColLabel}>Primary Worksite:</Text>
             <Text style={styles.tableColValue}>
-              {content.work_location || 'Finland Project Sites (Tampere / Helsinki)'}
+              {resolvedWorkLocation}
             </Text>
           </View>
           <View style={styles.tableRow}>
-            <Text style={styles.tableColLabel}>Contract & Visa Validity:</Text>
+            <Text style={styles.tableColLabel}>Contract &amp; Visa Validity:</Text>
             <Text style={styles.tableColValue}>
               {content.visa_duration || '2 (Two) Years Initial Validity (Renewable)'}
             </Text>
@@ -503,7 +532,7 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
             </Text>
           </View>
           <View style={styles.tableRowLast}>
-            <Text style={styles.tableColLabel}>Accommodations & Food:</Text>
+            <Text style={styles.tableColLabel}>Accommodations &amp; Food:</Text>
             <Text style={styles.tableColValue}>
               {content.accommodation || 'Company Provided Housing'} &amp;{' '}
               {content.food_allowance || 'Daily Meal Provision / Allowance'}
@@ -522,13 +551,13 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
           <View style={styles.benefitCard}>
             <Text style={styles.benefitTitle}>Daily Sustenance Support</Text>
             <Text style={styles.benefitDesc}>
-              Meal allowances provided to support your daily living in Finland.
+              Meal allowances provided to support your daily living.
             </Text>
           </View>
           <View style={styles.benefitCard}>
-            <Text style={styles.benefitTitle}>Medical & Healthcare Coverage</Text>
+            <Text style={styles.benefitTitle}>Medical &amp; Healthcare Coverage</Text>
             <Text style={styles.benefitDesc}>
-              Comprehensive health insurance coverage under Finnish standards.
+              Comprehensive health insurance coverage under international standards.
             </Text>
           </View>
           <View style={styles.benefitCard}>
@@ -539,12 +568,13 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
           </View>
         </View>
 
-        {/* Acceptance Box */}
+        {/* Acceptance Box - CONTACTING YOUR AGENCY Wording */}
         <View style={styles.acceptanceBox}>
-          <Text style={styles.acceptanceTitle}>Acceptance & Next Steps</Text>
+          <Text style={styles.acceptanceTitle}>Acceptance &amp; Next Steps</Text>
           <Text style={styles.acceptanceText}>
-            {content.acceptance_instructions ||
-              'Please review this offer carefully. Should you accept this opportunity, submit your confirmation and requisite travel documents through the candidate portal. Upon confirmation, our team will proceed with your formal visa application.'}
+            To accept this offer, please confirm your acceptance by contacting your agency. Further
+            instructions regarding documentation and pre-departure procedures will follow upon your
+            acceptance.
           </Text>
         </View>
 
@@ -560,10 +590,10 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
             )}
             <View style={styles.sigLine} />
             <Text style={styles.signatoryName}>
-              {content.signatory_name || 'Mikael Virtanen'}
+              {content.signatory_name || 'Ville Oskari'}
             </Text>
             <Text style={styles.signatoryTitle}>
-              {content.signatory_title || 'The Recruitment Team'}
+              {content.signatory_title || 'Recruitment Director'}
             </Text>
             <Text style={styles.signatoryCompany}>{companyName}</Text>
           </View>
@@ -573,13 +603,13 @@ export const LetterPdfDocument: React.FC<LetterPdfDocumentProps> = ({
             {stampPath && (
               <Image src={stampPath} style={styles.stampImg} />
             )}
-            <Text style={styles.stampLabel}>Official Seal & Verification</Text>
+            <Text style={styles.stampLabel}>Official Seal &amp; Verification</Text>
           </View>
         </View>
 
         {/* Running Footer */}
         <View style={styles.footer} fixed>
-          <Text>{companyName} • Confidential & Legally Binding Employment Offer</Text>
+          <Text>{companyName} • Confidential &amp; Legally Binding Employment Offer</Text>
           <Text>{website}</Text>
         </View>
       </Page>

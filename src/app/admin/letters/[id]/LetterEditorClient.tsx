@@ -38,25 +38,25 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
   const router = useRouter()
   const [content, setContent] = useState<LetterContentJson>(
     letter.rendered_content || {
-      company_name: 'Orsa International Recruitment Agency',
+      company_name: 'Orsa Recruitment Agency',
       company_address: '123 Business District, International Plaza',
-      company_email: 'recruitment@orsa.com',
+      company_email: 'contact@orssa.net',
       company_phone: '+1 (555) 019-2834',
       greeting: `Dear ${letter.employee.full_name},`,
       introduction:
-        'We are pleased to extend this formal employment offer following your successful interview and skills assessment with Orsa International Recruitment Agency.',
-      offer_body: `You are hereby offered the official placement of ${letter.job_offer?.title || 'Worker'}.`,
-      work_location: letter.job_offer?.default_work_location || 'Designated Regional Project Site',
+        'We are pleased to extend this formal employment offer following your successful interview and skills assessment with Orsa Recruitment Agency.',
+      offer_body: `You are hereby offered the official placement of ${(Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : letter.job_offer?.title) || 'Construction Worker'}.`,
+      work_location: letter.job_offer?.default_work_location || 'Romania / European Project Sites',
       visa_duration: letter.job_offer?.default_visa_duration || '24 Months',
-      salary: letter.job_offer?.default_salary ? `$${letter.job_offer.default_salary} USD / Month` : 'Competitive',
+      salary: letter.job_offer?.default_salary ? `$${letter.job_offer.default_salary} USD / Month` : '1600€ Gross / Month',
       responsibilities: letter.job_offer?.responsibilities || '',
       accommodation: 'Furnished Company Housing Provided',
       food_allowance: 'Full Monthly Sustenance Allowance',
       acceptance_instructions:
-        'Please acknowledge acceptance of this appointment by counter-signing and uploading through your Orsa candidate portal within 14 calendar days.',
+        'To accept this offer, please confirm your acceptance by contacting your agency. Further instructions regarding documentation and pre-departure procedures will follow upon your acceptance.',
       closing: 'Sincerely,',
-      signatory_name: 'Director of Human Resources',
-      signatory_title: 'Orsa International Operations',
+      signatory_name: 'Ville Oskari',
+      signatory_title: 'Recruitment Director',
     }
   )
 
@@ -459,7 +459,12 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
           <LetterPreview
             content={content}
             employeeName={letter.employee.full_name}
-            jobTitle={letter.job_offer?.title || 'Worker'}
+            jobTitle={
+              (Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : letter.job_offer?.title) ||
+              (content as any)?.job_title ||
+              (content as any)?.position ||
+              'Construction Worker'
+            }
             passportNumber={letter.employee.passport_number}
             issueDate={letter.issued_at || undefined}
           />

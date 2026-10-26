@@ -16,7 +16,8 @@ export default async function EmployeeApplicationLetterPage() {
       id,
       full_name,
       passport_number,
-      job_offer:job_offers(id, title)
+      job_offer_id,
+      job_offer:job_offers(id, title, default_work_location)
     `)
     .eq('user_id', profile.id)
     .single()
@@ -31,17 +32,33 @@ export default async function EmployeeApplicationLetterPage() {
         current_version,
         letter_date,
         rendered_content,
-        issued_at
+        issued_at,
+        job_offer_id
       `)
       .eq('employee_id', employee.id)
       .eq('status', 'issued')
       .single()
 
     if (letterData) {
+      let resolvedJobOffer: any = employee.job_offer
+      const targetJobOfferId = letterData.job_offer_id || employee.job_offer_id
+
+      if (!resolvedJobOffer && targetJobOfferId) {
+        const { data: directJobOffer } = await supabase
+          .from('job_offers')
+          .select('id, title, default_work_location')
+          .eq('id', targetJobOfferId)
+          .maybeSingle()
+
+        if (directJobOffer) {
+          resolvedJobOffer = directJobOffer
+        }
+      }
+
       letter = {
         ...letterData,
         employee,
-        job_offer: employee.job_offer,
+        job_offer: resolvedJobOffer as any,
       }
     }
   }

@@ -56,7 +56,12 @@ export default function EmployeeLetterClient({ letter }: EmployeeLetterClientPro
         <LetterPreview
           content={(letter.rendered_content as LetterContentJson) || {}}
           employeeName={letter.employee.full_name}
-          jobTitle={letter.job_offer?.title || 'Worker'}
+          jobTitle={
+            (Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : letter.job_offer?.title) ||
+            (letter.rendered_content as any)?.job_title ||
+            (letter.rendered_content as any)?.position ||
+            'Construction Worker'
+          }
           passportNumber={letter.employee.passport_number}
           issueDate={letter.issued_at || undefined}
         />
