@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { sanitizeString } from '@/lib/security/sanitize'
 
 // ============================================================
 // Employee Registration Schema
@@ -9,7 +10,8 @@ export const employeeRegistrationSchema = z.object({
     .string()
     .min(2, 'Full name must be at least 2 characters')
     .max(100, 'Full name must be at most 100 characters')
-    .trim(),
+    .trim()
+    .transform(sanitizeString),
   email: z
     .string()
     .email('Please enter a valid email address')
@@ -20,7 +22,8 @@ export const employeeRegistrationSchema = z.object({
     .min(3, 'Passport number is required')
     .max(20, 'Passport number is too long')
     .trim()
-    .toUpperCase(),
+    .toUpperCase()
+    .transform(sanitizeString),
   registration_date: z
     .string()
     .min(1, 'Registration date is required'),
@@ -35,12 +38,14 @@ export const employeeRegistrationSchema = z.object({
     .string()
     .max(20, 'Phone number is too long')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => (val ? sanitizeString(val) : '')),
   nationality: z
     .string()
     .max(50, 'Nationality is too long')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => (val ? sanitizeString(val) : '')),
   date_of_birth: z
     .string()
     .optional()
@@ -53,7 +58,8 @@ export const employeeRegistrationSchema = z.object({
     .string()
     .max(1000, 'Notes must be at most 1000 characters')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => (val ? sanitizeString(val) : '')),
 })
 
 export type EmployeeRegistrationInput = z.infer<typeof employeeRegistrationSchema>
@@ -67,7 +73,8 @@ export const employeeEditSchema = z.object({
     .string()
     .min(2, 'Full name must be at least 2 characters')
     .max(100, 'Full name must be at most 100 characters')
-    .trim(),
+    .trim()
+    .transform(sanitizeString),
   email: z
     .string()
     .email('Please enter a valid email address')
@@ -78,7 +85,8 @@ export const employeeEditSchema = z.object({
     .min(3, 'Passport number is required')
     .max(20, 'Passport number is too long')
     .trim()
-    .toUpperCase(),
+    .toUpperCase()
+    .transform(sanitizeString),
   registration_date: z
     .string()
     .min(1, 'Registration date is required'),
@@ -93,12 +101,14 @@ export const employeeEditSchema = z.object({
     .string()
     .max(20, 'Phone number is too long')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => (val ? sanitizeString(val) : '')),
   nationality: z
     .string()
     .max(50, 'Nationality is too long')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => (val ? sanitizeString(val) : '')),
   date_of_birth: z
     .string()
     .optional()
@@ -111,7 +121,8 @@ export const employeeEditSchema = z.object({
     .string()
     .max(1000, 'Notes must be at most 1000 characters')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => (val ? sanitizeString(val) : '')),
 })
 
 export type EmployeeEditInput = z.infer<typeof employeeEditSchema>
@@ -125,7 +136,8 @@ export const subAdminSchema = z.object({
     .string()
     .min(2, 'Full name must be at least 2 characters')
     .max(100, 'Full name must be at most 100 characters')
-    .trim(),
+    .trim()
+    .transform(sanitizeString),
   email: z
     .string()
     .email('Please enter a valid email address')

@@ -2,8 +2,10 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { logAuditEvent, getCurrentProfile } from '@/lib/auth/helpers'
+import { checkRateLimit, resetRateLimit } from '@/lib/security/rate-limit'
 import {
   loginSchema,
   changePasswordSchema,
@@ -17,6 +19,19 @@ import type { ApiResponse } from '@/types/database'
 // ---------------------------------------------------------------------------
 export async function login(data: LoginInput): Promise<ApiResponse<{ must_change_password: boolean; role: string }>> {
   try {
+    const headerList = await headers()
+    const ip = headerList.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+
+    // Rate limiting: max 5 attempts per 15 minutes per IP + email
+    const rateLimitKey = `login:${ip}:${data.email?.toLowerCase().trim() || 'anon'}`
+    const rateCheck = checkRateLimit(rateLimitKey, { limit: 5, windowMs: 15 * 60 * 1000 })
+    if (!rateCheck.success) {
+      return {
+        success: false,
+        error: `Too many login attempts. Please try again in ${rateCheck.retryAfterSeconds} seconds.`,
+      }
+    }
+
     const parsed = loginSchema.safeParse(data)
     if (!parsed.success) {
       // Generic message — don't reveal which field is wrong
@@ -35,6 +50,9 @@ export async function login(data: LoginInput): Promise<ApiResponse<{ must_change
       // Always return a generic message to prevent user enumeration
       return { success: false, error: 'Invalid email or password.' }
     }
+
+    // Login succeeded: reset rate limit for this IP + email
+    resetRateLimit(rateLimitKey)
 
     const userId = authData.user.id
 
@@ -103,6 +121,21 @@ export async function logout(): Promise<void> {
 // ---------------------------------------------------------------------------
 export async function changePassword(data: ChangePasswordInput): Promise<ApiResponse> {
   try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) {
+      return { success: false, error: 'You must be logged in to change your password.' }
+    }
+
+    // Rate limiting: max 5 password changes per 15 minutes per user
+    const rateCheck = checkRateLimit(`pwd_change:${user.id}`, { limit: 5, windowMs: 15 * 60 * 1000 })
+    if (!rateCheck.success) {
+      return {
+        success: false,
+        error: `Too many password change attempts. Please wait ${rateCheck.retryAfterSeconds} seconds.`,
+      }
+    }
+
     const parsed = changePasswordSchema.safeParse(data)
     if (!parsed.success) {
       const firstError = parsed.error.errors[0]?.message ?? 'Validation failed.'
@@ -110,12 +143,6 @@ export async function changePassword(data: ChangePasswordInput): Promise<ApiResp
     }
 
     const { current_password, new_password } = parsed.data
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user?.email) {
-      return { success: false, error: 'You must be logged in to change your password.' }
-    }
 
     // Verify current password by re-signing in
     const { error: verifyError } = await supabase.auth.signInWithPassword({
@@ -190,6 +217,18 @@ export async function validateEmployeeLoginRef(refToken: string): Promise<
   }>
 > {
   try {
+    const headerList = await headers()
+    const ip = headerList.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+
+    // Rate limiting: max 15 token validations per minute per IP to prevent brute forcing
+    const rateCheck = checkRateLimit(`ref_check:${ip}`, { limit: 15, windowMs: 60 * 1000 })
+    if (!rateCheck.success) {
+      return {
+        success: false,
+        error: `Too many validation requests. Please wait ${rateCheck.retryAfterSeconds} seconds.`,
+      }
+    }
+
     if (!refToken || typeof refToken !== 'string') {
       return { success: false, error: 'Invalid login reference token.' }
     }

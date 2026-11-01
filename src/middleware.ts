@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { extractSubdomain, getSubdomainUrls } from '@/lib/utils/url'
+import { getCorsHeaders, isAllowedOrigin } from '@/lib/security/cors'
 
 function redirectWithCookies(
   destination: string | URL,
@@ -34,6 +35,18 @@ function rewriteWithCookies(
 }
 
 export async function middleware(request: NextRequest) {
+  const origin = request.headers.get('origin')
+  const pathname = request.nextUrl.pathname
+
+  // Handle CORS preflight for API / Auth endpoints
+  if (request.method === 'OPTIONS' && (pathname.startsWith('/api') || pathname.startsWith('/auth'))) {
+    const corsHeaders = getCorsHeaders(origin)
+    return new NextResponse(null, {
+      status: 204,
+      headers: corsHeaders,
+    })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -79,7 +92,6 @@ export async function middleware(request: NextRequest) {
   const hostname = host.split(':')[0].toLowerCase()
   const subdomain = extractSubdomain(host)
   const { mainUrl, adminUrl, employeeUrl, isLocal } = getSubdomainUrls(host)
-  const pathname = request.nextUrl.pathname
   const search = request.nextUrl.search
 
   // Check if accessing from standard localhost root without subdomain prefix
@@ -339,6 +351,14 @@ export async function middleware(request: NextRequest) {
         return redirectWithCookies(new URL('/employee', request.url), request, supabaseResponse)
       }
     }
+  }
+
+  // Attach CORS headers if requested by an authorized origin
+  if (origin && isAllowedOrigin(origin)) {
+    const corsHeaders = getCorsHeaders(origin)
+    Object.entries(corsHeaders).forEach(([k, v]) => {
+      supabaseResponse.headers.set(k, v)
+    })
   }
 
   return supabaseResponse
