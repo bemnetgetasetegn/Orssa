@@ -131,14 +131,21 @@ export async function logAuditEvent(
   action: string,
   entityType: string,
   entityId: string | null,
-  metadata: Record<string, unknown> = {}
+  metadata: Record<string, unknown> = {},
+  actorUserId?: string | null
 ) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let userId = actorUserId
+    if (!userId) {
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      userId = user?.id || null
+    }
     
-    await supabase.from('audit_logs').insert({
-      actor_user_id: user?.id || null,
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminClient = createAdminClient()
+    await adminClient.from('audit_logs').insert({
+      actor_user_id: userId,
       action,
       entity_type: entityType,
       entity_id: entityId,

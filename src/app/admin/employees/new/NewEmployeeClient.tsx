@@ -51,11 +51,13 @@ export default function NewEmployeeClient({ jobOffers, isSuperAdmin = false }: N
         const res = await registerEmployee(formData)
         if (!res.success) {
           setError(res.error || 'Failed to register employee.')
+          window.scrollTo({ top: 0, behavior: 'smooth' })
         } else if (res.data) {
           setCredentials(res.data)
         }
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred.')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     })
   }
@@ -291,6 +293,14 @@ export default function NewEmployeeClient({ jobOffers, isSuperAdmin = false }: N
             </div>
           </div>
         </div>
+
+        {/* Inline Bottom Error Display */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-red-950/40 border border-[#EF4444]/40 text-[#EF4444]">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">

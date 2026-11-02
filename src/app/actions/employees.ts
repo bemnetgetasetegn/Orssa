@@ -84,30 +84,37 @@ export async function registerEmployee(
 
     const adminClient = createAdminClient()
 
-    // Check for duplicate email
-    const { data: existingUser } = await adminClient.auth.admin.listUsers()
-    const emailExists = existingUser?.users?.some(
-      (u: { email?: string }) => u.email?.toLowerCase() === data.email.toLowerCase()
-    )
-    if (emailExists) {
+    // 1. Parallel pre-flight checks (fast database index queries instead of slow listUsers)
+    const [existingPassport, existingEmail, countResult] = await Promise.all([
+      adminClient
+        .from('employees')
+        .select('id')
+        .eq('passport_number', data.passport_number)
+        .maybeSingle(),
+      adminClient
+        .from('employees')
+        .select('id')
+        .eq('email', data.email.toLowerCase())
+        .maybeSingle(),
+      adminClient
+        .from('employees')
+        .select('*', { count: 'exact', head: true }),
+    ])
+
+    if (existingPassport.data) {
+      return { success: false, error: 'An employee with this passport number already exists.' }
+    }
+    if (existingEmail.data) {
       return { success: false, error: 'An account with this email already exists.' }
     }
 
-    // Check for duplicate passport
-    const { data: existingPassport } = await adminClient
-      .from('employees')
-      .select('id')
-      .eq('passport_number', data.passport_number)
-      .maybeSingle()
-    if (existingPassport) {
-      return { success: false, error: 'An employee with this passport number already exists.' }
-    }
-
+    const count = countResult.count ?? 0
+    const seq = String(count + 1).padStart(5, '0')
+    const employeeCode = `EMP-${seq}`
     const temporaryPassword = generateSecurePassword(16)
-    const employeeCode = await generateEmployeeCode()
     const loginRef = generateLoginRef()
 
-    // 1. Create auth user
+    // 2. Create auth user
     const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
       email: data.email,
       password: temporaryPassword,
@@ -120,12 +127,15 @@ export async function registerEmployee(
 
     if (authError || !authUser?.user) {
       console.error('Auth user creation error:', authError)
-      return { success: false, error: authError?.message ?? 'Failed to create user account.' }
+      const msg = authError?.message?.toLowerCase().includes('already registered')
+        ? 'An account with this email already exists.'
+        : (authError?.message ?? 'Failed to create user account.')
+      return { success: false, error: msg }
     }
 
     const userId = authUser.user.id
 
-    // 2. Update profile (trigger should have created it, but upsert to be safe)
+    // 3. Upsert profile
     const { error: profileError } = await adminClient
       .from('profiles')
       .upsert({
@@ -143,10 +153,7 @@ export async function registerEmployee(
       return { success: false, error: 'Failed to create user profile.' }
     }
 
-    // 3. Create employee record
-    const supabase = await createClient()
-    const { data: { user: actor } } = await supabase.auth.getUser()
-
+    // 4. Create employee record (actorProfile.id used directly without redundant getUser() trip)
     const { data: employee, error: empError } = await adminClient
       .from('employees')
       .insert({
@@ -164,7 +171,7 @@ export async function registerEmployee(
         date_of_birth: data.date_of_birth || null,
         passport_expiry_date: data.passport_expiry_date || null,
         internal_notes: data.internal_notes || null,
-        created_by: actor?.id || null,
+        created_by: actorProfile.id,
         assigned_sub_admin_id: actorProfile.role === 'sub_admin' ? actorProfile.id : null,
       })
       .select()
@@ -176,28 +183,61 @@ export async function registerEmployee(
       return { success: false, error: 'Failed to create employee record.' }
     }
 
-    // If registered by sub-admin, also add to sub_admin_assignments table
-    if (actorProfile.role === 'sub_admin') {
-      await adminClient.from('sub_admin_assignments').insert({
-        sub_admin_id: actorProfile.id,
-        employee_id: employee.id,
-        assigned_by: actorProfile.id,
-      })
+    // 5. Optional photograph processing
+    const photoFile = formData.get('photo') as File | null
+    if (photoFile && photoFile.size > 0 && photoFile.name && photoFile.name !== 'undefined') {
+      try {
+        const ext = photoFile.name.split('.').pop() || 'jpg'
+        const storagePath = generatePhotoStoragePath(employee.id, ext)
+        const arrayBuffer = await photoFile.arrayBuffer()
+        const { error: uploadError } = await adminClient.storage
+          .from('employee-photos')
+          .upload(storagePath, new Uint8Array(arrayBuffer), {
+            contentType: photoFile.type || 'image/jpeg',
+            upsert: true,
+          })
+        if (!uploadError) {
+          await adminClient
+            .from('employees')
+            .update({ photo_storage_path: storagePath })
+            .eq('id', employee.id)
+        }
+      } catch (photoErr) {
+        console.warn('Optional photo upload failed, registration preserved:', photoErr)
+      }
     }
 
-    // 4. Store login ref for pre-fill hint
-    await adminClient.from('employee_login_refs').insert({
-      employee_id: employee.id,
-      ref_token: loginRef,
-      is_active: true,
-    })
+    // 6. Post-creation operations executed in parallel
+    const postInserts: Promise<any>[] = [
+      adminClient.from('employee_login_refs').insert({
+        employee_id: employee.id,
+        ref_token: loginRef,
+        is_active: true,
+      }),
+      logAuditEvent(
+        'employee.registered',
+        'employee',
+        employee.id,
+        {
+          employee_code: employeeCode,
+          email: data.email,
+          full_name: data.full_name,
+        },
+        actorProfile.id
+      ),
+    ]
 
-    // 5. Log audit event
-    await logAuditEvent('employee.registered', 'employee', employee.id, {
-      employee_code: employeeCode,
-      email: data.email,
-      full_name: data.full_name,
-    })
+    if (actorProfile.role === 'sub_admin') {
+      postInserts.push(
+        adminClient.from('sub_admin_assignments').insert({
+          sub_admin_id: actorProfile.id,
+          employee_id: employee.id,
+          assigned_by: actorProfile.id,
+        })
+      )
+    }
+
+    await Promise.all(postInserts)
 
     revalidatePath('/admin/employees')
 
