@@ -77,9 +77,14 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
         <Link
           href="/"
           onClick={onClose}
-          className="font-heading font-bold text-lg tracking-widest uppercase text-white hover:text-white/80 transition-colors"
+          className="flex items-center gap-2.5 font-heading font-bold text-lg tracking-widest uppercase text-white hover:text-white/80 transition-colors"
         >
-          {SITE_CONFIG.name}
+          <img
+            src="/logo.png"
+            alt="ORSA Logo"
+            className="h-7 w-auto object-contain"
+          />
+          <span>{SITE_CONFIG.name}</span>
         </Link>
         <button
           ref={closeButtonRef}

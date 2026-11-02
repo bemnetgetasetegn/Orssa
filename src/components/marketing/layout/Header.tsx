@@ -80,17 +80,24 @@ export const Header: React.FC = () => {
         }`}
       >
         <div className="max-w-[1440px] mx-auto px-6 md:px-12 xl:px-20 flex items-center justify-between">
-          {/* Brand Wordmark */}
+          {/* Brand Wordmark & Logo */}
           <Link
             href="/"
-            className="group flex flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#850D0D]"
+            className="group flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#850D0D]"
           >
-            <span className="font-heading font-bold text-lg sm:text-xl tracking-wider text-[#171717] group-hover:text-[#850D0D] transition-colors uppercase">
-              {SITE_CONFIG.name}
-            </span>
-            <span className="text-[10px] tracking-widest uppercase text-[#777570] -mt-0.5">
-              Work Visa Guidance
-            </span>
+            <img
+              src="/logo.png"
+              alt="ORSA Logo"
+              className="h-10 w-auto object-contain"
+            />
+            <div className="flex flex-col">
+              <span className="font-heading font-bold text-lg sm:text-xl tracking-wider text-[#171717] group-hover:text-[#850D0D] transition-colors uppercase">
+                {SITE_CONFIG.name}
+              </span>
+              <span className="text-[10px] tracking-widest uppercase text-[#777570] -mt-0.5">
+                Work Visa Guidance
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Nav */}

@@ -27,13 +27,22 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 pb-12 border-b border-white/10">
           {/* Col 1: Wordmark & Brand Narrative */}
           <div className="space-y-4">
-            <Link href="/" className="inline-block">
-              <span className="font-heading font-bold text-xl tracking-wider text-white uppercase block">
-                {SITE_CONFIG.name}
-              </span>
-              <span className="text-[11px] tracking-widest uppercase text-[#777570]">
-                European Work Visa Consultancy
-              </span>
+            <Link href="/" className="flex items-center gap-3">
+              <div className="bg-white/10 p-1.5 rounded border border-white/10">
+                <img
+                  src="/logo.png"
+                  alt="ORSA Logo"
+                  className="h-8 w-auto object-contain"
+                />
+              </div>
+              <div>
+                <span className="font-heading font-bold text-xl tracking-wider text-white uppercase block">
+                  {SITE_CONFIG.name}
+                </span>
+                <span className="text-[11px] tracking-widest uppercase text-[#777570]">
+                  European Work Visa Consultancy
+                </span>
+              </div>
             </Link>
             <p className="text-sm text-[#DAD8D3]/80 leading-relaxed max-w-sm">
               Providing clear, structured guidance for professionals and skilled workers navigating employment pathways in Romania, Croatia, and Finland.

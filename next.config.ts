@@ -5,8 +5,8 @@ const ContentSecurityPolicy = `
   script-src 'self' 'unsafe-eval' 'unsafe-inline';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
-  img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in;
-  connect-src 'self' https://*.supabase.co https://*.supabase.in https://*.orssa.net http://localhost:* http://*.localhost:*;
+  img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://*.unsplash.com;
+  connect-src 'self' https://*.supabase.co https://*.supabase.in https://orssa.net https://*.orssa.net https://*.vercel.app http://localhost:* http://*.localhost:*;
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
@@ -61,6 +61,18 @@ const nextConfig: NextConfig = {
       process.env.NODE_ENV === "production"
         ? { exclude: ["error", "warn"] }
         : false,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+      },
+    ],
   },
   turbopack: {
     rules: {
