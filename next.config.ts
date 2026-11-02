@@ -63,6 +63,7 @@ const nextConfig: NextConfig = {
         : false,
   },
   experimental: {
+    agentUpgrade: "security" as any,
     serverActions: {
       bodySizeLimit: "6mb",
     },
