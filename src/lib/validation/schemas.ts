@@ -227,6 +227,7 @@ export type LetterTemplateInput = z.infer<typeof letterTemplateSchema>
 // ============================================================
 
 export const applicationLetterSchema = z.object({
+  job_offer_id: z.string().uuid().optional().nullable(),
   template_id: z.string().uuid().optional().nullable(),
   letter_date: z.string().optional().nullable(),
   rendered_content: z.object({}).passthrough().optional().nullable(),

@@ -43,12 +43,18 @@ export default async function EmployeeDashboardPage() {
   // Fetch application letter directly for this employee
   const { data: letterData } = await supabase
     .from('application_letters')
-    .select('*')
+    .select('*, job_offer:job_offers(*)')
     .eq('employee_id', employee.id)
     .maybeSingle()
 
   const letter = letterData
   const hasIssuedLetter = letter && letter.status === 'issued'
+
+  // The assigned position is taken from the employee record or the issued job offer letter
+  const resolvedJobTitle =
+    employee.job_offer?.title ||
+    (hasIssuedLetter && letter.job_offer?.title ? letter.job_offer.title : null) ||
+    'Pending Placement'
 
   return (
     <EmployeeLayout>
@@ -89,7 +95,7 @@ export default async function EmployeeDashboardPage() {
             <span className="text-xs text-[#A1A1AA]">Assigned Position</span>
             <div className="mt-2 flex items-center justify-between">
               <p className="font-semibold text-xs text-[#FAFAFA] truncate">
-                {employee.job_offer?.title || 'Pending Placement'}
+                {resolvedJobTitle}
               </p>
               <Briefcase className="h-4 w-4 text-[#E50914]" />
             </div>

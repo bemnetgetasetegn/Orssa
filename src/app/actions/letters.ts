@@ -320,6 +320,7 @@ export async function updateApplicationLetter(
     const updatePayload: Record<string, unknown> = {
       updated_by: profile.id,
     }
+    if (validData.job_offer_id !== undefined) updatePayload.job_offer_id = validData.job_offer_id
     if (validData.template_id !== undefined) updatePayload.template_id = validData.template_id
     if (validData.letter_date !== undefined) updatePayload.letter_date = validData.letter_date
     if (validData.rendered_content !== undefined)
@@ -343,12 +344,24 @@ export async function updateApplicationLetter(
       return { success: false, error: 'Failed to update application letter.' }
     }
 
+    // Sync assigned position to employee record
+    if (validData.job_offer_id && letter.employee_id) {
+      await adminClient
+        .from('employees')
+        .update({ job_offer_id: validData.job_offer_id })
+        .eq('id', letter.employee_id)
+    }
+
     await logAuditEvent('application_letter.updated', 'application_letter', id, {
       status: validData.status,
+      job_offer_id: validData.job_offer_id,
       updated_by_role: profile.role,
     })
 
+    revalidatePath(`/admin/employees/${letter.employee_id}`)
     revalidatePath(`/dashboard/employees/${letter.employee_id}`)
+    revalidatePath('/admin/employees')
+    revalidatePath('/employee')
 
     return { success: true, data: updated as ApplicationLetter }
   } catch (error) {
@@ -428,16 +441,35 @@ export async function issueLetter(id: string): Promise<ApiResponse<ApplicationLe
 
     const employee = updated.employee as { id: string; full_name: string; employee_code: string } | null
 
+    // Ensure the employee's official assigned position is taken from the issued job offer letter
+    const finalJobOfferId = updated.job_offer_id || letter.job_offer_id
+    if (letter.employee_id && finalJobOfferId) {
+      await adminClient
+        .from('employees')
+        .update({
+          job_offer_id: finalJobOfferId,
+          application_status: 'approved',
+        })
+        .eq('id', letter.employee_id)
+    }
+
     await logAuditEvent('application_letter.issued', 'application_letter', id, {
       version: newVersion,
+      job_offer_id: finalJobOfferId,
       employee_id: employee?.id,
       employee_code: employee?.employee_code,
     })
 
     if (employee?.id) {
+      revalidatePath(`/admin/employees/${employee.id}`)
       revalidatePath(`/dashboard/employees/${employee.id}`)
     }
+    revalidatePath('/admin/employees')
     revalidatePath('/dashboard/letters')
+    revalidatePath('/admin/letters')
+    revalidatePath('/employee')
+    revalidatePath('/employee/profile')
+    revalidatePath('/employee/application-letter')
 
     return { success: true, data: updated as ApplicationLetter }
   } catch (error) {

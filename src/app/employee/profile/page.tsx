@@ -14,10 +14,20 @@ export default async function EmployeeProfilePage() {
     .from('employees')
     .select(`
       *,
-      job_offer:job_offers(*)
+      job_offer:job_offers(*),
+      application_letter:application_letters(status, job_offer:job_offers(*))
     `)
     .eq('user_id', profile.id)
     .single()
+
+  const letterInfo = Array.isArray(employee?.application_letter)
+    ? employee?.application_letter[0]
+    : employee?.application_letter
+
+  const resolvedJobTitle =
+    employee?.job_offer?.title ||
+    (letterInfo?.status === 'issued' ? (letterInfo?.job_offer as any)?.title : null) ||
+    'Unassigned'
 
   let photoUrl: string | null = null
   if (employee?.photo_storage_path) {
@@ -55,7 +65,7 @@ export default async function EmployeeProfilePage() {
               <p className="text-xs font-mono text-[#A1A1AA]">{employee?.employee_code}</p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 text-xs text-[#A1A1AA]">
                 <span className="px-2.5 py-0.5 rounded bg-[#141416] border border-[#303036] text-[#FAFAFA]">
-                  {employee?.job_offer?.title || 'Unassigned'}
+                  {resolvedJobTitle}
                 </span>
                 <span>• Registered on {employee?.registration_date}</span>
               </div>

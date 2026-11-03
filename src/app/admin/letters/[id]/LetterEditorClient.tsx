@@ -14,6 +14,7 @@ import {
   Eye,
   RefreshCw,
   FileCheck,
+  Briefcase,
 } from 'lucide-react'
 import LetterPreview from '@/components/letters/LetterPreview'
 import {
@@ -32,10 +33,27 @@ interface LetterEditorClientProps {
     job_offer: JobOffer | null
   }
   templates: LetterTemplate[]
+  jobOffers?: JobOffer[]
+  isSuperAdmin?: boolean
 }
 
-export default function LetterEditorClient({ letter, templates }: LetterEditorClientProps) {
+export default function LetterEditorClient({
+  letter,
+  templates,
+  jobOffers = [],
+  isSuperAdmin = true,
+}: LetterEditorClientProps) {
   const router = useRouter()
+  const initialJobOffer =
+    letter.job_offer ||
+    jobOffers.find((j) => j.id === (letter.job_offer_id || letter.employee.job_offer_id)) ||
+    null
+
+  const [selectedJobOfferId, setSelectedJobOfferId] = useState<string>(
+    letter.job_offer_id || initialJobOffer?.id || letter.employee.job_offer_id || ''
+  )
+  const [currentJobOffer, setCurrentJobOffer] = useState<JobOffer | null>(initialJobOffer)
+
   const [content, setContent] = useState<LetterContentJson>(
     letter.rendered_content || {
       company_name: 'Orsa Recruitment Agency',
@@ -45,11 +63,11 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
       greeting: `Dear ${letter.employee.full_name},`,
       introduction:
         'We are pleased to extend this formal employment offer following your successful interview and skills assessment with Orsa Recruitment Agency.',
-      offer_body: `You are hereby offered the official placement of ${(Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : letter.job_offer?.title) || 'Construction Worker'}.`,
-      work_location: letter.job_offer?.default_work_location || 'Romania / European Project Sites',
-      visa_duration: letter.job_offer?.default_visa_duration || '24 Months',
-      salary: letter.job_offer?.default_salary ? `$${letter.job_offer.default_salary} USD / Month` : '1600€ Gross / Month',
-      responsibilities: letter.job_offer?.responsibilities || '',
+      offer_body: `You are hereby offered the official placement of ${(Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : letter.job_offer?.title) || initialJobOffer?.title || 'Construction Worker'}.`,
+      work_location: initialJobOffer?.default_work_location || letter.job_offer?.default_work_location || 'Romania / European Project Sites',
+      visa_duration: initialJobOffer?.default_visa_duration || letter.job_offer?.default_visa_duration || '24 Months',
+      salary: initialJobOffer?.default_salary ? `$${initialJobOffer.default_salary} USD / Month` : letter.job_offer?.default_salary ? `$${letter.job_offer.default_salary} USD / Month` : '1600€ Gross / Month',
+      responsibilities: initialJobOffer?.responsibilities || letter.job_offer?.responsibilities || '',
       accommodation: 'Furnished Company Housing Provided',
       food_allowance: 'Full Monthly Sustenance Allowance',
       acceptance_instructions:
@@ -72,6 +90,23 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
     setContent((prev) => ({ ...prev, [field]: value }))
   }
 
+  const handleJobOfferSelect = (newJobOfferId: string) => {
+    setSelectedJobOfferId(newJobOfferId)
+    const offer = jobOffers.find((o) => o.id === newJobOfferId)
+    if (offer) {
+      setCurrentJobOffer(offer)
+      setContent((prev) => ({
+        ...prev,
+        offer_body: `You are hereby offered the official placement of ${offer.title}.`,
+        work_location: offer.default_work_location || prev.work_location || 'Romania / European Project Sites',
+        visa_duration: offer.default_visa_duration || prev.visa_duration || '24 Months',
+        salary: offer.default_salary ? `$${offer.default_salary} USD / Month` : prev.salary || '1600€ Gross / Month',
+        responsibilities: offer.responsibilities || prev.responsibilities || '',
+      }))
+      setMessage({ type: 'success', text: `Assigned position updated to: ${offer.title}` })
+    }
+  }
+
   const handleTemplateSelect = (templateId: string) => {
     const selected = templates.find((t) => t.id === templateId)
     if (selected && selected.content_json) {
@@ -87,11 +122,12 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
     setMessage(null)
     startTransition(async () => {
       const res = await updateApplicationLetter(letter.id, {
+        job_offer_id: selectedJobOfferId || null,
         rendered_content: content,
         status: isIssued ? 'issued' : 'draft',
       })
       if (res.success) {
-        setMessage({ type: 'success', text: 'Draft revisions saved successfully.' })
+        setMessage({ type: 'success', text: 'Draft revisions and assigned position saved.' })
         router.refresh()
       } else {
         setMessage({ type: 'error', text: res.error || 'Failed to save letter.' })
@@ -102,15 +138,16 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
   const handleIssueLetter = async () => {
     setMessage(null)
     startTransition(async () => {
-      // First save content
+      // First save content & assigned job offer
       await updateApplicationLetter(letter.id, {
+        job_offer_id: selectedJobOfferId || null,
         rendered_content: content,
       })
-      // Then issue
+      // Then issue (which updates employees.job_offer_id)
       const res = await issueLetter(letter.id)
       setIssueConfirmOpen(false)
       if (res.success) {
-        setMessage({ type: 'success', text: 'Letter officially issued to candidate portal!' })
+        setMessage({ type: 'success', text: 'Letter officially issued and position assigned to candidate!' })
         // Trigger background PDF generation
         await generateLetterPdf(letter.id)
         router.refresh()
@@ -168,7 +205,7 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
               </span>
             </div>
             <p className="text-xs text-[#A1A1AA] mt-0.5">
-              Candidate: <span className="text-[#FAFAFA] font-medium">{letter.employee.full_name}</span> ({letter.employee.passport_number}) • Role: {letter.job_offer?.title}
+              Candidate: <span className="text-[#FAFAFA] font-medium">{letter.employee.full_name}</span> ({letter.employee.passport_number}) • Role: {currentJobOffer?.title || 'Unassigned'}
             </p>
           </div>
         </div>
@@ -216,24 +253,44 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
         </div>
       )}
 
-      {/* Template Preset Selector & Dynamic Tags Bar */}
+      {/* Position Assignment & Template Preset Bar */}
       <div className="rounded-xl border border-[#303036] bg-[#1D1D20] p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-[#A1A1AA]">Load Template:</span>
-          <select
-            onChange={(e) => handleTemplateSelect(e.target.value)}
-            defaultValue=""
-            className="rounded-lg bg-[#141416] border border-[#303036] px-3 py-1.5 text-xs text-[#FAFAFA] focus:outline-none focus:border-[#E50914]"
-          >
-            <option value="" disabled>
-              -- Select Corporate Preset --
-            </option>
-            {templates.map((tpl) => (
-              <option key={tpl.id} value={tpl.id}>
-                {tpl.name}
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Super Admin Position Assignment */}
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-[#E50914]" />
+            <span className="text-xs font-semibold text-[#FAFAFA]">Designated Position:</span>
+            <select
+              value={selectedJobOfferId}
+              onChange={(e) => handleJobOfferSelect(e.target.value)}
+              className="rounded-lg bg-[#141416] border border-[#303036] px-3 py-1.5 text-xs text-[#FAFAFA] font-medium focus:outline-none focus:border-[#E50914]"
+            >
+              <option value="" disabled>-- Assign Job Role --</option>
+              {jobOffers.map((offer) => (
+                <option key={offer.id} value={offer.id}>
+                  {offer.title} ({offer.currency} {offer.default_salary ? Number(offer.default_salary).toLocaleString() : 'Negotiable'})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-[#A1A1AA]">Load Template:</span>
+            <select
+              onChange={(e) => handleTemplateSelect(e.target.value)}
+              defaultValue=""
+              className="rounded-lg bg-[#141416] border border-[#303036] px-3 py-1.5 text-xs text-[#FAFAFA] focus:outline-none focus:border-[#E50914]"
+            >
+              <option value="" disabled>
+                -- Select Corporate Preset --
               </option>
-            ))}
-          </select>
+              {templates.map((tpl) => (
+                <option key={tpl.id} value={tpl.id}>
+                  {tpl.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#A1A1AA]">
@@ -460,6 +517,7 @@ export default function LetterEditorClient({ letter, templates }: LetterEditorCl
             content={content}
             employeeName={letter.employee.full_name}
             jobTitle={
+              currentJobOffer?.title ||
               (Array.isArray(letter.job_offer) ? (letter.job_offer as any)[0]?.title : letter.job_offer?.title) ||
               (content as any)?.job_title ||
               (content as any)?.position ||
